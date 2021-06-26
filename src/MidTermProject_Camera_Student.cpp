@@ -23,6 +23,7 @@ struct performancePoint
     string detectorType, descriptorType;
     float detectorTime, descriptorTime;
     int numKeypoints;
+    int numMatchedKeypoints;
     float avgKeypointSize, stdDevKeypointSize;
     int imageID;
 };
@@ -92,11 +93,10 @@ vector<performancePoint> processImageSeq(string detectorType, string descriptorT
         vector<cv::KeyPoint> car_keypoints;
         if (bFocusOnVehicle) 
         {
-            for (cv::KeyPoint point : keypoints) {
+            for (cv::KeyPoint point : keypoints) 
+            {
                 if (vehicleRect.contains(point.pt)) 
-                {
                     car_keypoints.push_back(point);
-                }
             }
             keypoints.clear();
             keypoints = car_keypoints;
@@ -155,7 +155,7 @@ vector<performancePoint> processImageSeq(string detectorType, string descriptorT
 
             vector<cv::DMatch> matches;
             string matcherType    = "MAT_BF";        // MAT_BF, MAT_FLANN
-            string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
+            string descriptorType = "DES_BINARY";    // DES_BINARY, DES_HOG
             string selectorType   = "SEL_KNN";       // SEL_NN, SEL_KNN
 
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
@@ -164,6 +164,7 @@ vector<performancePoint> processImageSeq(string detectorType, string descriptorT
 
             // store matches in current data frame
             (dataBuffer.end() - 1)->kptMatches = matches;
+            performance.numMatchedKeypoints = matches.size();
 
             cout << "#4 : MATCH KEYPOINT DESCRIPTORS done" << endl;
 
@@ -183,6 +184,10 @@ vector<performancePoint> processImageSeq(string detectorType, string descriptorT
                 cout << "Press key to continue to next image" << endl;
                 cv::waitKey(0); // wait for key to be pressed
             }
+        }
+        else
+        {
+            performance.numMatchedKeypoints = 0; 
         }
 
         measurements.push_back(performance);
@@ -224,7 +229,7 @@ int main(int argc, const char *argv[])
             }
         }
 
-        cout << "detector \t descrtor \t img \t detectTime \t descrTime \t numKeyPoints \t avgKeyPointSize \t stdDevKeyPointSize " << endl;
+        cout << "detector \t descrtor \t img \t detectTime \t descrTime \t numKeyPoints \t numMatches \t avgKeyPointSize \t stdDevKeyPointSize " << endl;
         for (performancePoint m : measurements)
         {
             cout << m.detectorType << "\t ";
@@ -233,6 +238,7 @@ int main(int argc, const char *argv[])
             cout << m.detectorTime << "\t ";
             cout << m.descriptorTime << "\t ";
             cout << m.numKeypoints << "\t ";
+            cout << m.numMatchedKeypoints << "\t ";
             cout << m.avgKeypointSize << "\t ";
             cout << m.stdDevKeypointSize << "\t ";
             cout << endl;

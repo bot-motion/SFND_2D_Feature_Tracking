@@ -31,13 +31,14 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
     {
         // k nearest neighbors 
         int k = 2;
-        vector<vector<cv::DMatch>> knn_matches;
-        matcher->knnMatch(descSource, descRef, knn_matches, k);
+        vector<vector<cv::DMatch>> knnMatches;
+        matcher->knnMatch(descSource, descRef, knnMatches, k);
         double minDescDistRatio = 0.8;
 
-        for (vector<cv::DMatch> match : knn_matches)
+        for (vector<cv::DMatch> match : knnMatches)
         {
-            if (match[0].distance < minDescDistRatio * match[1].distance) {
+            bool twoKeypointMatchesAreApart = match[0].distance < minDescDistRatio * match[1].distance;
+            if (twoKeypointMatchesAreApart) {
                 matches.push_back(match[0]);
             }
         }
