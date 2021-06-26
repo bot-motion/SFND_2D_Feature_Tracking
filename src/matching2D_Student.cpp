@@ -4,8 +4,8 @@
 using namespace std;
 
 // Find best matches for keypoints in two camera images based on several matching methods
-oid matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::KeyPoint> &kPtsRef, cv::Mat &descSource, cv::Mat &descRef,
-                      std::vector<cv::DMatch> &matches, std::string descriptorType, std::string matcherType, std::string selectorType)
+void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::KeyPoint> &kPtsRef, cv::Mat &descSource, cv::Mat &descRef,
+                     std::vector<cv::DMatch> &matches, std::string descriptorType, std::string matcherType, std::string selectorType)
 {
     // configure matcher
     bool crossCheck = false;
@@ -42,14 +42,9 @@ oid matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::KeyP
         vector<vector<cv::DMatch>> knn_matches;
         matcher->knnMatch(descSource, descRef, knn_matches, k);
         double minDescDistRatio = 0.8;
-        /* for (auto it = knn_matches.begin(); it != knn_matches.end(); ++it)  */
+
         for (auto match : knn_matches)
         {
-            /*
-            if ((*it)[0].distance < minDescDistRatio * (*it)[1].distance) {
-                matches.push_back((*it)[0]);
-            }
-            */
             if (match[0].distance < minDescDistRatio * match[1].distance) {
                 matches.push_back(match[0]);
             }
@@ -118,15 +113,15 @@ void detKeypointsShiTomasi(vector<cv::KeyPoint> &keypoints, cv::Mat &img)
     double qualityLevel = 0.01; // minimal accepted quality of image corners
     double k = 0.04;
 
-    // Apply corner detection
+    // apply corner detection
     vector<cv::Point2f> corners;
     cv::goodFeaturesToTrack(img, corners, maxCorners, qualityLevel, minDistance, cv::Mat(), blockSize, false, k);
 
     // add corners to result vector
-    for (auto it = corners.begin(); it != corners.end(); ++it)
+    for (auto c : corners)
     {
         cv::KeyPoint newKeyPoint;
-        newKeyPoint.pt = cv::Point2f((*it).x, (*it).y);
+        newKeyPoint.pt = cv::Point2f(c.x, c.y);
         newKeyPoint.size = blockSize;
         keypoints.push_back(newKeyPoint);
     }
@@ -134,56 +129,61 @@ void detKeypointsShiTomasi(vector<cv::KeyPoint> &keypoints, cv::Mat &img)
 
 void detKeypointsHarris(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img) 
 {
-  // Detector parameters
-  int blockSize = 2; // for every pixel, a blockSize × blockSize neighborhood is considered
-  int apertureSize = 3; // aperture parameter for Sobel operator (must be odd)
-  int minResponse = 100; // minimum value for a corner in the 8bit scaled response matrix
-  double k = 0.04; // Harris parameter (see equation for details)
+    // Detector parameters
+    int blockSize = 2;     // for every pixel, a blockSize × blockSize neighborhood is considered
+    int apertureSize = 3;  // aperture parameter for Sobel operator (must be odd)
+    int minResponse = 100; // minimum value for a corner in the 8bit scaled response matrix
+    double k = 0.04;       // Harris parameter (see equation for details)
 
-  // Detect Harris corners and normalize output
-  cv::Mat dst, dst_norm, dst_norm_scaled;
-  dst = cv::Mat::zeros(img.size(), CV_32FC1);
-  cv::cornerHarris(img, dst, blockSize, apertureSize, k, cv::BORDER_DEFAULT);
-  cv::normalize(dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat());
-  cv::convertScaleAbs(dst_norm, dst_norm_scaled);
+    // Detect Harris corners and normalize output
+    cv::Mat dst, dst_norm, dst_norm_scaled;
+    dst = cv::Mat::zeros(img.size(), CV_32FC1);
+    cv::cornerHarris(img, dst, blockSize, apertureSize, k, cv::BORDER_DEFAULT);
+    cv::normalize(dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat());
+    cv::convertScaleAbs(dst_norm, dst_norm_scaled);
 
-  // Look for prominent corners and instantiate keypoints
+    // Look for prominent corners and instantiate keypoints
 
-  double maxOverlap = 0.0; // max. permissible overlap between two features in
-                           // %, used during non-maxima suppression
-  for (size_t j = 0; j < dst_norm.rows; j++) {
-    for (size_t i = 0; i < dst_norm.cols; i++) {
-      int response = (int)dst_norm.at<float>(j, i);
-      if (response > minResponse) { // only store points above a threshold
+    double maxOverlap = 0.0; // max. permissible overlap between two features in
+                             // %, used during non-maxima suppression
+    for (size_t j = 0; j < dst_norm.rows; j++)
+    {
+        for (size_t i = 0; i < dst_norm.cols; i++)
+        {
+            int response = (int)dst_norm.at<float>(j, i);
+            if (response > minResponse)
+            {   // only store points above a threshold
 
-        cv::KeyPoint newKeyPoint;
-        newKeyPoint.pt = cv::Point2f(i, j);
-        newKeyPoint.size = 2 * apertureSize;
-        newKeyPoint.response = response;
+                cv::KeyPoint newKeyPoint;
+                newKeyPoint.pt = cv::Point2f(i, j);
+                newKeyPoint.size = 2 * apertureSize;
+                newKeyPoint.response = response;
 
-        // perform non-maximum suppression (NMS) in local neighbourhood around
-        // new key point
-        bool bOverlap = false;
-        for (auto it = keypoints.begin(); it != keypoints.end(); ++it) {
-          double kptOverlap = cv::KeyPoint::overlap(newKeyPoint, *it);
-          if (kptOverlap > maxOverlap) {
-            bOverlap = true;
-            if (newKeyPoint.response >
-                (*it).response) { // if overlap is >t AND response is higher for
-                                  // new kpt
-              *it = newKeyPoint;  // replace old key point with new one
-              break;              // quit loop over keypoints
+                // perform non-maximum suppression (NMS) in local neighbourhood around
+                // new key point
+                bool bOverlap = false;
+                for (auto currPoint : keypoints)
+                {
+                    double kptOverlap = cv::KeyPoint::overlap(newKeyPoint, currPoint);
+                    if (kptOverlap > maxOverlap)
+                    {
+                        bOverlap = true;
+                        if (newKeyPoint.response > currPoint.response)
+                        {                      // if overlap is >t AND response is higher for
+                                               // new kpt
+                            currPoint = newKeyPoint; // replace old key point with new one
+                            break;             
+                        }
+                    }
+                }
+                if (!bOverlap)
+                {   // only add new key point if no overlap has been found
+                    // in previous NMS
+                    keypoints.push_back(newKeyPoint); // store new keypoint in dynamic list
+                }
             }
-          }
         }
-        if (!bOverlap) { // only add new key point if no overlap has been found
-                         // in previous NMS
-          keypoints.push_back(
-              newKeyPoint); // store new keypoint in dynamic list
-        }
-      }
-    } 
-  }
+    }
 }
 
 void detKeypoints(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,
@@ -228,14 +228,14 @@ void detKeypoints(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,
     detector->detect(img, keypoints);
   } 
   else if (detectorType.compare("SIFT") == 0) {
-    detector = cv::xfeatures2d::SIFT::create(); // does not compile w/o re-compile of OpenCV!
+    detector = cv::xfeatures2d::SIFT::create(); 
     detector->detect(img, keypoints);
   } 
   else 
   {
     std::cout << detectorType
               << " is a not valid keypoint detectors please select from ( "
-                 "SHITOMASI,HARRIS, FAST, BRISK, ORB, AKAZE, SIFT)\n";
+                 "SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT)\n";
   }
 
   period = 1000.0f * ((double)cv::getTickCount() - t_start) / cv::getTickFrequency();

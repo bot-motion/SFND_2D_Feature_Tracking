@@ -38,7 +38,7 @@ int main(int argc, const char *argv[])
     // misc
     int dataBufferSize = 2;       // no. of images which are held in memory (ring buffer) at the same time
     vector<DataFrame> dataBuffer; // list of data frames which are held in memory at the same time
-    bool bVis = false;            // visualize results
+    bool bVis = true;            // visualize results
 
     /* MAIN LOOP OVER ALL IMAGES */
 
@@ -71,11 +71,12 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
+       
+        // valid detectorType are
+        // -> SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
         string detectorType = "SHITOMASI";
 
-        // valid detectorType are
-        // -> HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
-        detKeypoints(keypoints, imgGray, detectorType, true);
+        detKeypoints(keypoints, imgGray, detectorType, bVis);
 
         // Only keep keypoints on the preceding vehicle (for debugging)
         bool bFocusOnVehicle = true;
@@ -83,16 +84,9 @@ int main(int argc, const char *argv[])
         vector<cv::KeyPoint> car_keypoints;
         if (bFocusOnVehicle) 
         {
-            /*for (int index = 0; index < keypoints.size(); index++) { */
             for (cv::KeyPoint point : keypoints) {
-                /*
-                if ((keypoints[index].pt.x >= vehicleRect.tl().x) &&
-                    (keypoints[index].pt.y >= vehicleRect.tl().y) &&
-                    (keypoints[index].pt.x <= vehicleRect.br().x) &&
-                    (keypoints[index].pt.y <= vehicleRect.br().y)) */
-                if (vehicleRect.contains(point.pt))  // if necessary, instantiate cv-point
+                if (vehicleRect.contains(point.pt)) 
                 {
-                    /* car_keypoints.push_back(keypoints[index]); */
                     car_keypoints.push_back(point);
                 }
             }
@@ -107,7 +101,7 @@ int main(int argc, const char *argv[])
             int maxKeypoints = 50;
 
             if (detectorType.compare("SHITOMASI") == 0)
-            { // there is no response info, so keep the first 50 as they are sorted in descending quality order
+            {   // there is no response info, so keep the first 50 as they are sorted in descending quality order
                 keypoints.erase(keypoints.begin() + maxKeypoints, keypoints.end());
             }
             cv::KeyPointsFilter::retainBest(keypoints, maxKeypoints);
@@ -121,10 +115,10 @@ int main(int argc, const char *argv[])
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
         // The following descriptors are available:
-        //   -> BRIEF, ORB, FREAK, AKAZE, SIFT
+        //   -> BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
 
         cv::Mat descriptors;
-        string descriptorType = "BRISK"; // BRIEF, ORB, FREAK, AKAZE, SIFT
+        string descriptorType = "BRISK"; 
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
