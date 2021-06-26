@@ -45,7 +45,7 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
 }
 
 // Use one of several types of state-of-art descriptors to uniquely identify keypoints
-void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descriptors, string descriptorType)
+float descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descriptors, string descriptorType)
 {
     cv::Ptr<cv::DescriptorExtractor> extractor;
     if (descriptorType.compare("BRISK") == 0)
@@ -85,6 +85,8 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descr
     extractor->compute(img, keypoints, descriptors);
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
     cout << descriptorType << " descriptor extraction in " << 1000 * t / 1.0 << " ms" << endl;
+
+    return t;
 }
 
 
@@ -179,7 +181,7 @@ void detKeypointsHarris(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img)
 }
 
 
-void detKeypoints(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,
+float detKeypoints(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,
                         std::string detectorType, bool bVis) 
 {
   cv::Ptr<cv::FeatureDetector> detector;
@@ -244,4 +246,6 @@ void detKeypoints(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,
     cv::imshow(windowName, visImage);
     cv::waitKey(0);
   }
+
+  return period;
 }

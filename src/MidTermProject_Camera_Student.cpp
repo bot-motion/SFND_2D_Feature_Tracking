@@ -18,9 +18,23 @@
 
 using namespace std;
 
-
-void processImageSeq(string detectorType, string descriptorType, bool bVis)
+struct performancePoint
 {
+    string detectorType, descriptorType;
+    float detectorTime, descriptorTime;
+    int numKeypoints;
+    float avgKeypointSize, stdDevKeypointSize;
+    int imageID;
+};
+
+
+performancePoint processImageSeq(string detectorType, string descriptorType, bool bVis)
+{
+    performancePoint performance;
+
+    performance.detectorType = detectorType;
+    performance.descriptorType = descriptorType;
+
     // data location
     string dataPath = "../";
 
@@ -39,6 +53,7 @@ void processImageSeq(string detectorType, string descriptorType, bool bVis)
     /* MAIN LOOP OVER ALL IMAGES */
     for (size_t imgIndex = 0; imgIndex <= imgEndIndex - imgStartIndex; imgIndex++)
     {
+        performance.imageID = imgIndex; 
         /* LOAD IMAGE INTO BUFFER */
 
         // assemble filenames for current index
@@ -67,7 +82,7 @@ void processImageSeq(string detectorType, string descriptorType, bool bVis)
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
 
-        detKeypoints(keypoints, imgGray, detectorType, bVis);
+        performance.detectorTime = detKeypoints(keypoints, imgGray, detectorType, bVis);
 
         // Only keep keypoints on the preceding vehicle (for debugging)
         bool bFocusOnVehicle = true;
@@ -91,16 +106,18 @@ void processImageSeq(string detectorType, string descriptorType, bool bVis)
         {
             size_sum += p.size;
         }
-        float size_avg = (float)size_sum / (float)car_keypoints.size();
+        performance.avgKeypointSize = (float)size_sum / (float)car_keypoints.size();
 
         float ssq = 0.0f;
         for (cv::KeyPoint p : car_keypoints)
         {
-            ssq += ((p.size - size_avg) * (p.size - size_avg));
+            ssq += ((p.size - performance.avgKeypointSize) * (p.size - performance.avgKeypointSize));
         }
-        float size_stddev = sqrt(ssq / (float)car_keypoints.size());
+        performance.stdDevKeypointSize = sqrt(ssq / (float)car_keypoints.size());
 
-        cout << "img = " << imgIndex << "\t n = " << car_keypoints.size() << "\t size_avg = " << size_avg << "\t  size_stddev = " << size_stddev << endl;
+        performance.numKeypoints = car_keypoints.size();
+
+        cout << "img = " << imgIndex << "\t n = " << car_keypoints.size() << "\t size_avg = " << performance.avgKeypointSize << "\t  size_stddev = " << performance.stdDevKeypointSize << endl; 
 
         // optional : limit number of keypoints (helpful for debugging and learning)
         bool bLimitKpts = false;
@@ -123,7 +140,7 @@ void processImageSeq(string detectorType, string descriptorType, bool bVis)
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
         cv::Mat descriptors;
-        descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
+        performance.descriptorTime = descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
         (dataBuffer.end() - 1)->descriptors = descriptors;
@@ -166,7 +183,9 @@ void processImageSeq(string detectorType, string descriptorType, bool bVis)
             }
         }
 
-    } // eof loop over all images    
+    } // eof loop over all images   
+    
+    return performance;
 }
 
 
@@ -174,15 +193,20 @@ void processImageSeq(string detectorType, string descriptorType, bool bVis)
 /* MAIN PROGRAM */
 int main(int argc, const char *argv[])
 {
-    // valid detectorType are ...   ["SHITOMASI",  "SIFT"]
+    vector<performancePoint> measurements;
+
+    // valid detectorType are ...   ["SIFT" does not work]
     vector<string> detectorTypes = { "SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE"};
-    // valid descriptors are ...    ["SIFT", "FREAK" and "AKAZE" does not work]
+    // valid descriptors are ...    ["SIFT", "FREAK" and "AKAZE" do not work]
     vector<string> descriptorTypes = { "BRISK", "ORB"};
 
     bool bVis = false;  // visualize results?
 
     if (bVis)
-        processImageSeq("SHITOMASI", "BRISK", bVis);
+    {
+        performancePoint  perfObs;
+        perfObs = processImageSeq("SHITOMASI", "BRISK", bVis);
+    }
     else
     {
         for (string detectorType : detectorTypes)
@@ -190,10 +214,24 @@ int main(int argc, const char *argv[])
             for (string descriptorType : descriptorTypes)
             {
                 cout << endl << " ------ " << detectorType << " x " << descriptorType << " --------- " << endl;
-                processImageSeq(detectorType, descriptorType, bVis);
+                performancePoint  perfObs;
+                perfObs = processImageSeq(detectorType, descriptorType, bVis);
+                measurements.push_back(perfObs);
             }
+        }
+
+        for (performancePoint m : measurements)
+        {
+            cout << m.detectorType << "\t ";
+            cout << m.descriptorType << "\t ";
+            cout << m.imageID << "\t ";
+            cout << m.detectorTime << "\t ";
+            cout << m.descriptorTime << "\t ";
+            cout << m.numKeypoints << "\t ";
+            cout << m.avgKeypointSize << "\t ";
+            cout << m.stdDevKeypointSize << "\t ";
+            cout << endl;
         }
     }
 
-    return 0;
 }
