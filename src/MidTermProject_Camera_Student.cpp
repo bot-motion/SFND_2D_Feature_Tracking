@@ -28,8 +28,10 @@ struct performancePoint
 };
 
 
-performancePoint processImageSeq(string detectorType, string descriptorType, bool bVis)
+vector<performancePoint> processImageSeq(string detectorType, string descriptorType, bool bVis)
 {
+    vector<performancePoint> measurements;
+
     performancePoint performance;
 
     performance.detectorType = detectorType;
@@ -183,9 +185,10 @@ performancePoint processImageSeq(string detectorType, string descriptorType, boo
             }
         }
 
+        measurements.push_back(performance);
     } // eof loop over all images   
     
-    return performance;
+    return measurements;
 }
 
 
@@ -204,7 +207,7 @@ int main(int argc, const char *argv[])
 
     if (bVis)
     {
-        performancePoint  perfObs;
+        vector<performancePoint>  perfObs;
         perfObs = processImageSeq("SHITOMASI", "BRISK", bVis);
     }
     else
@@ -214,9 +217,10 @@ int main(int argc, const char *argv[])
             for (string descriptorType : descriptorTypes)
             {
                 cout << endl << " ------ " << detectorType << " x " << descriptorType << " --------- " << endl;
-                performancePoint  perfObs;
+                vector<performancePoint>  perfObs;
                 perfObs = processImageSeq(detectorType, descriptorType, bVis);
-                measurements.push_back(perfObs);
+                // append new performance observations to existing ones
+                measurements.insert(measurements.end(),perfObs.begin(),perfObs.end());
             }
         }
 
