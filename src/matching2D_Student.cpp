@@ -18,14 +18,6 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
     }
     else if (matcherType.compare("MAT_FLANN") == 0)
     {
-        /*
-        if (descSource.type() != CV_32F) { // OpenCV bug workaround : convert binary
-                                       // descriptors to floating point due to a
-                                       // bug in current OpenCV implementation
-          descSource.convertTo(descSource, CV_32F);
-          descRef.convertTo(descRef, CV_32F);
-        }
-        */
         matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
     }
 
@@ -43,7 +35,7 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
         matcher->knnMatch(descSource, descRef, knn_matches, k);
         double minDescDistRatio = 0.8;
 
-        for (auto match : knn_matches)
+        for (vector<cv::DMatch> match : knn_matches)
         {
             if (match[0].distance < minDescDistRatio * match[1].distance) {
                 matches.push_back(match[0]);
@@ -51,7 +43,6 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
         }
     }
 }
-
 
 // Use one of several types of state-of-art descriptors to uniquely identify keypoints
 void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descriptors, string descriptorType)
@@ -71,7 +62,8 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descr
     } 
     else if (descriptorType.compare("FREAK") == 0) 
     {
-        extractor = cv::FREAK::create();
+        // extractor = cv::FREAK::create();
+        cout << "FREAK could not be run due to standard OpenCV install \n";
     } 
     else if (descriptorType.compare("AKAZE") == 0) 
     {
@@ -84,8 +76,8 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descr
     else 
     {
       std::cout << descriptorType
-                << " is a not valid keypoint detectors please select from ( "
-                   "BRIEF, ORB,FREAK, AKAZE, SIFT)\n";
+                << " is a not valid keypoint descriptor please select from ( "
+                   "BRISK, ORB, AKAZE, SIFT)\n";
     }
 
     // perform feature description
@@ -186,6 +178,7 @@ void detKeypointsHarris(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img)
     }
 }
 
+
 void detKeypoints(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,
                         std::string detectorType, bool bVis) 
 {
@@ -235,7 +228,7 @@ void detKeypoints(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,
   {
     std::cout << detectorType
               << " is a not valid keypoint detectors please select from ( "
-                 "SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT)\n";
+                 "SHITOMASI, HARRIS, FAST, BRIEF, ORB, AKAZE, SIFT)\n";
   }
 
   period = 1000.0f * ((double)cv::getTickCount() - t_start) / cv::getTickFrequency();

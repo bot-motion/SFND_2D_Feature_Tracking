@@ -18,12 +18,9 @@
 
 using namespace std;
 
-/* MAIN PROGRAM */
-int main(int argc, const char *argv[])
+
+void processImageSeq(string detectorType, string descriptorType, bool bVis)
 {
-
-    /* INIT VARIABLES AND DATA STRUCTURES */
-
     // data location
     string dataPath = "../";
 
@@ -38,10 +35,8 @@ int main(int argc, const char *argv[])
     // misc
     int dataBufferSize = 2;       // no. of images which are held in memory (ring buffer) at the same time
     vector<DataFrame> dataBuffer; // list of data frames which are held in memory at the same time
-    bool bVis = true;            // visualize results
 
     /* MAIN LOOP OVER ALL IMAGES */
-
     for (size_t imgIndex = 0; imgIndex <= imgEndIndex - imgStartIndex; imgIndex++)
     {
         /* LOAD IMAGE INTO BUFFER */
@@ -71,10 +66,6 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-       
-        // valid detectorType are
-        // -> SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
-        string detectorType = "SHITOMASI";
 
         detKeypoints(keypoints, imgGray, detectorType, bVis);
 
@@ -93,6 +84,23 @@ int main(int argc, const char *argv[])
             keypoints.clear();
             keypoints = car_keypoints;
         }
+
+        // compute stats on keypoints on next vehicle
+        float size_sum = 0.0f;
+        for (cv::KeyPoint p : car_keypoints)
+        {
+            size_sum += p.size;
+        }
+        float size_avg = (float)size_sum / (float)car_keypoints.size();
+
+        float ssq = 0.0f;
+        for (cv::KeyPoint p : car_keypoints)
+        {
+            ssq += ((p.size - size_avg) * (p.size - size_avg));
+        }
+        float size_stddev = sqrt(ssq / (float)car_keypoints.size());
+
+        cout << "img = " << imgIndex << "\t n = " << car_keypoints.size() << "\t size_avg = " << size_avg << "\t  size_stddev = " << size_stddev << endl;
 
         // optional : limit number of keypoints (helpful for debugging and learning)
         bool bLimitKpts = false;
@@ -114,11 +122,7 @@ int main(int argc, const char *argv[])
 
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
-        // The following descriptors are available:
-        //   -> BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
-
         cv::Mat descriptors;
-        string descriptorType = "BRISK"; 
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
@@ -128,17 +132,16 @@ int main(int argc, const char *argv[])
 
         if (dataBuffer.size() > 1) // wait until at least two images have been processed
         {
-
             /* MATCH KEYPOINT DESCRIPTORS */
 
             vector<cv::DMatch> matches;
-            string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
+            string matcherType    = "MAT_BF";        // MAT_BF, MAT_FLANN
             string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
-            string selectorType = "SEL_NN";       // SEL_NN, SEL_KNN
+            string selectorType   = "SEL_KNN";       // SEL_NN, SEL_KNN
 
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
-                             (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
-                             matches, descriptorType, matcherType, selectorType);
+                            (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
+                            matches, descriptorType, matcherType, selectorType);
 
             // store matches in current data frame
             (dataBuffer.end() - 1)->kptMatches = matches;
@@ -146,7 +149,6 @@ int main(int argc, const char *argv[])
             cout << "#4 : MATCH KEYPOINT DESCRIPTORS done" << endl;
 
             // visualize matches between current and previous image
-            bVis = true;
             if (bVis)
             {
                 cv::Mat matchImg = ((dataBuffer.end() - 1)->cameraImg).clone();
@@ -162,10 +164,36 @@ int main(int argc, const char *argv[])
                 cout << "Press key to continue to next image" << endl;
                 cv::waitKey(0); // wait for key to be pressed
             }
-            bVis = false;
         }
 
-    } // eof loop over all images
+    } // eof loop over all images    
+}
+
+
+
+/* MAIN PROGRAM */
+int main(int argc, const char *argv[])
+{
+    // valid detectorType are ...   ["SHITOMASI",  "SIFT"]
+    vector<string> detectorTypes = { "SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE"};
+    // valid descriptors are ...    ["SIFT", "FREAK" and "AKAZE" does not work]
+    vector<string> descriptorTypes = { "BRISK", "ORB"};
+
+    bool bVis = false;  // visualize results?
+
+    if (bVis)
+        processImageSeq("SHITOMASI", "BRISK", bVis);
+    else
+    {
+        for (string detectorType : detectorTypes)
+        {
+            for (string descriptorType : descriptorTypes)
+            {
+                cout << endl << " ------ " << detectorType << " x " << descriptorType << " --------- " << endl;
+                processImageSeq(detectorType, descriptorType, bVis);
+            }
+        }
+    }
 
     return 0;
 }
