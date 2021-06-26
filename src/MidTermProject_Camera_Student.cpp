@@ -224,6 +224,7 @@ int main(int argc, const char *argv[])
             }
         }
 
+        cout << "detector \t descrtor \t img \t detectTime \t descrTime \t numKeyPoints \t avgKeyPointSize \t stdDevKeyPointSize " << endl;
         for (performancePoint m : measurements)
         {
             cout << m.detectorType << "\t ";
