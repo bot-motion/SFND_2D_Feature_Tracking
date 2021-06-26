@@ -37,7 +37,8 @@ that the top three detector/descriptor combos are (FAST/BRISK), (FAST/ORB), (ORB
 
 <img src="matched_keypoints_vs_speed.png">
  
-SIFT and FREAK failed with memory overflows or other exceptions from within OpenCV and could not be evaluated.
+In the diagram the bubble diameter represents the average size of the keypoints, i.e. how much of the surroundings of a 
+keypoint is encoded. Descriptors SIFT and FREAK failed with memory overflows or other exceptions from within OpenCV and could not be evaluated.
 
 
 
